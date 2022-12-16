@@ -1,0 +1,8 @@
+[submodule "one-blockchain-gui"]
+	path = one-blockchain-gui
+	url = https://github.com/xone-network/one-blockchain-gui.git
+	branch = main
+[submodule "mozilla-ca"]
+	path = mozilla-ca
+	url = https://github.com/chia-network/mozilla-ca.git
+	branch = main
