@@ -1310,7 +1310,7 @@ def get_signage_point(
     normalized_to_identity_cc_sp: bool = False,
 ) -> SignagePoint:
     if signage_point_index == 0:
-        return SignagePoint(None, None, None, None)
+        return SignagePoint(None, None, None, None, constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH)
     sp_iters = calculate_sp_iters(constants, sub_slot_iters, signage_point_index)
     overflow = is_overflow_block(constants, signage_point_index)
     sp_total_iters = uint128(
@@ -1355,7 +1355,7 @@ def get_signage_point(
             sp_iters,
             True,
         )
-    return SignagePoint(cc_sp_vdf, cc_sp_proof, rc_sp_vdf, rc_sp_proof)
+    return SignagePoint(cc_sp_vdf, cc_sp_proof, rc_sp_vdf, rc_sp_proof, constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH)
 
 
 def finish_block(
@@ -2077,7 +2077,7 @@ def create_test_unfinished_block(
                     curr = blocks.block_record(curr.prev_hash)
                 assert curr.finished_reward_slot_hashes is not None
                 rc_sp_hash = curr.finished_reward_slot_hashes[-1]
-        signage_point = SignagePoint(None, None, None, None)
+        signage_point = SignagePoint(None, None, None, None, constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH)
 
     cc_sp_signature: Optional[G2Element] = get_plot_signature(
         cc_sp_hash,

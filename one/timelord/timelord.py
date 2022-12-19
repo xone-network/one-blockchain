@@ -271,8 +271,8 @@ class Timelord:
                         f"because its iters are too low"
                     )
                 return None
-
-        if block.foliage.foliage_block_data.timelord_fee_puzzle_hash != decode_puzzle_hash(self.config["xone_target_address"]):
+        fee_ph = block.foliage.foliage_block_data.timelord_fee_puzzle_hash
+        if "xone_target_address" in self.config and fee_ph != decode_puzzle_hash(self.config["xone_target_address"]):
             log.debug(
                 f"Will not infuse unfinished block {block.rc_prev} sp total iters {block_sp_total_iters}, "
                 f"because another timelord will"
@@ -488,16 +488,16 @@ class Timelord:
                     # This proof is on an outdated challenge, so don't use it
                     continue
                 iters_from_sub_slot_start = cc_info.number_of_iterations + self.last_state.get_last_ip()
-                xone_target_address = self.constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH
+                timelord_puzzle_hash = self.constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH
                 if "xone_target_address" in self.config:
-                    xone_target_address = self.config["xone_target_address"]
+                    timelord_puzzle_hash = decode_puzzle_hash(self.config["xone_target_address"])
                 response = timelord_protocol.NewSignagePointVDF(
                     signage_point_index,
                     dataclasses.replace(cc_info, number_of_iterations=iters_from_sub_slot_start),
                     cc_proof,
                     rc_info,
                     rc_proof,
-                    decode_puzzle_hash(xone_target_address)
+                    timelord_puzzle_hash,
                 )
                 if self._server is not None:
                     msg = make_msg(ProtocolMessageTypes.new_signage_point_vdf, response)

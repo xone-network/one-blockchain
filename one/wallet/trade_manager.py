@@ -41,7 +41,7 @@ class TradeManager:
     """
     This class is a driver for creating and accepting settlement_payments.clvm style offers.
 
-    By default, standard XCH is supported but to support other types of assets you must implement certain functions on
+    By default, standard XONE is supported but to support other types of assets you must implement certain functions on
     the asset's wallet as well as create a driver for its puzzle(s).  Here is a guide to integrating a new types of
     assets with this trade manager:
 
@@ -234,7 +234,7 @@ class TradeManager:
                 new_ph = await wallet.wallet_state_manager.main_wallet.get_new_puzzlehash()
             else:
                 new_ph = await wallet.get_new_puzzlehash()
-            # This should probably not switch on whether or not we're spending a XCH but it has to for now
+            # This should probably not switch on whether or not we're spending a XONE but it has to for now
             if wallet.type() == WalletType.STANDARD_WALLET:
                 if fee_to_pay > coin.amount:
                     selected_coins: Set[Coin] = await wallet.select_coins(
@@ -313,7 +313,7 @@ class TradeManager:
                     new_ph = await wallet.wallet_state_manager.main_wallet.get_new_puzzlehash()
                 else:
                     new_ph = await wallet.get_new_puzzlehash()
-                # This should probably not switch on whether or not we're spending a XCH but it has to for now
+                # This should probably not switch on whether or not we're spending a XONE but it has to for now
                 if wallet.type() == WalletType.STANDARD_WALLET:
                     if fee_to_pay > coin.amount:
                         selected_coins: Set[Coin] = await wallet.select_coins(
@@ -446,7 +446,7 @@ class TradeManager:
             offer_dict_no_ints: Dict[Optional[bytes32], int] = {}
             for id, amount in offer_dict.items():
                 asset_id: Optional[bytes32] = None
-                # asset_id can either be none if asset is XCH or
+                # asset_id can either be none if asset is XONE or
                 # bytes32 if another asset (e.g. NFT, CAT)
                 if amount > 0:
                     # this is what we are receiving in the trade
@@ -493,7 +493,7 @@ class TradeManager:
 
                 offer_dict_no_ints[asset_id] = amount
 
-                if asset_id is not None and wallet is not None:  # if this asset is not XCH
+                if asset_id is not None and wallet is not None:  # if this asset is not XONE
                     if callable(getattr(wallet, "get_puzzle_info", None)):
                         puzzle_driver: PuzzleInfo = await wallet.get_puzzle_info(asset_id)
                         if asset_id in driver_dict and driver_dict[asset_id] != puzzle_driver:
@@ -529,7 +529,7 @@ class TradeManager:
                     wallet = self.wallet_state_manager.wallets[id]
                 else:
                     wallet = await self.wallet_state_manager.get_wallet_for_asset_id(id.hex())
-                # This should probably not switch on whether or not we're spending XCH but it has to for now
+                # This should probably not switch on whether or not we're spending XONE but it has to for now
                 if wallet.type() == WalletType.STANDARD_WALLET:
                     tx = await wallet.generate_signed_transaction(
                         abs(offer_dict[id]),
