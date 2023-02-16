@@ -13,11 +13,11 @@ import click
 import zstd
 
 from one.simulator.block_tools import create_block_tools
+from one.simulator.keyring import TempKeyring
 from one.types.blockchain_format.coin import Coin
 from one.types.spend_bundle import SpendBundle
 from one.util.one_logging import initialize_logging
 from one.util.ints import uint32, uint64
-from tests.util.keyring import TempKeyring
 from tools.test_constants import test_constants
 
 

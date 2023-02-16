@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 import importlib
 import inspect
 import os
-import sys
-
-import tempfile
 import pathlib
+import sys
+import tempfile
 from typing import List
 
 import pkg_resources
-from one.types.blockchain_format.program import Program, SerializedProgram
-from one.util.lock import Lockfile
 from clvm_tools_rs import compile_clvm as compile_clvm_rust
 
+from one.types.blockchain_format.program import Program, SerializedProgram
+from one.util.lock import Lockfile
 
 compile_clvm_py = None
 
@@ -90,7 +91,7 @@ def load_serialized_clvm(
     hex_filename = f"{clvm_filename}.hex"
 
     # Set the ONE_DEV_COMPILE_CLVM_ON_IMPORT environment variable to anything except
-    # "" or "0" to trigger automatic recompilation of the Onelisp on load.
+    # "" or "0" to trigger automatic recompilation of the Chialisp on load.
     if recompile:
         try:
             if pkg_resources.resource_exists(package_or_requirement, clvm_filename):

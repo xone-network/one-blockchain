@@ -5,18 +5,18 @@ import pathlib
 import sys
 from typing import Any, Dict, Optional, cast
 
-from one.cmds.init_funcs import create_all_ssl
 from one.data_layer.data_layer import DataLayer
 from one.data_layer.data_layer_api import DataLayerAPI
 from one.rpc.data_layer_rpc_api import DataLayerRpcApi
 from one.rpc.wallet_rpc_client import WalletRpcClient
 from one.server.outbound_message import NodeType
 from one.server.start_service import RpcInfo, Service, async_run
-from one.server.start_wallet import WalletNode
+from one.ssl.create_ssl import create_all_ssl
 from one.util.one_logging import initialize_logging
 from one.util.config import load_config, load_config_cli
 from one.util.default_root import DEFAULT_ROOT_PATH
 from one.util.ints import uint16
+from one.wallet.wallet_node import WalletNode
 
 # See: https://bugs.python.org/issue29288
 "".encode("idna")

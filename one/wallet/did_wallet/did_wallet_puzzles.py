@@ -1,12 +1,16 @@
-from one.types.blockchain_format.sized_bytes import bytes32
-from one.types.blockchain_format.program import Program
-from typing import List, Optional, Tuple, Iterator, Dict
+from __future__ import annotations
+
+from typing import Dict, Iterator, List, Optional, Tuple
+
 from blspy import G1Element
+
 from one.types.blockchain_format.coin import Coin
+from one.types.blockchain_format.program import Program
+from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.coin_spend import CoinSpend
+from one.types.condition_opcodes import ConditionOpcode
 from one.util.ints import uint64
 from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
-from one.types.condition_opcodes import ConditionOpcode
 from one.wallet.util.curry_and_treehash import calculate_hash_of_quoted_mod_hash, curry_and_treehash
 
 SINGLETON_TOP_LAYER_MOD = load_clvm_maybe_recompile("singleton_top_layer_v1_1.clvm")
@@ -25,6 +29,7 @@ def create_innerpuz(
     num_of_backup_ids_needed: uint64,
     launcher_id: bytes32,
     metadata: Program = Program.to([]),
+    recovery_list_hash: bytes32 = None,
 ) -> Program:
     """
     Create DID inner puzzle
@@ -33,9 +38,12 @@ def create_innerpuz(
     :param num_of_backup_ids_needed: Need how many DIDs for the recovery
     :param launcher_id: ID of the launch coin
     :param metadata: DID customized metadata
+    :param recovery_list_hash: Recovery list hash
     :return: DID inner puzzle
     """
     backup_ids_hash = Program(Program.to(recovery_list)).get_tree_hash()
+    if recovery_list_hash is not None:
+        backup_ids_hash = recovery_list_hash
     singleton_struct = Program.to((SINGLETON_TOP_LAYER_MOD_HASH, (launcher_id, LAUNCHER_PUZZLE_HASH)))
     return DID_INNERPUZ_MOD.curry(p2_puzzle, backup_ids_hash, num_of_backup_ids_needed, singleton_struct, metadata)
 
@@ -218,9 +226,9 @@ def check_is_did_puzzle(puzzle: Program) -> bool:
 
 def metadata_to_program(metadata: Dict) -> Program:
     """
-    Convert the metadata dict to a Onelisp program
+    Convert the metadata dict to a Chialisp program
     :param metadata: User defined metadata
-    :return: Onelisp program
+    :return: Chialisp program
     """
     kv_list = []
     for key, value in metadata.items():
@@ -231,7 +239,7 @@ def metadata_to_program(metadata: Dict) -> Program:
 def program_to_metadata(program: Program) -> Dict:
     """
     Convert a program to a metadata dict
-    :param program: Onelisp program contains the metadata
+    :param program: Chialisp program contains the metadata
     :return: Metadata dict
     """
     metadata = {}

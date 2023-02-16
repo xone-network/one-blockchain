@@ -167,7 +167,7 @@ class DataStore:
         generation: Optional[int] = None,
     ) -> None:
         # This should be replaced by an SQLite schema level check.
-        # https://github.com/denisio/one-blockchain/pull/9284
+        # https://github.com/xone-network/one-blockchain/pull/9284
         tree_id = bytes32(tree_id)
 
         async with self.db_wrapper.writer() as writer:
@@ -310,8 +310,8 @@ class DataStore:
 
     async def _insert_terminal_node(self, key: bytes, value: bytes) -> bytes32:
         # forcing type hint here for:
-        # https://github.com/one/clvm/pull/102
-        # https://github.com/one/clvm/pull/106
+        # https://github.com/Chia-Network/clvm/pull/102
+        # https://github.com/Chia-Network/clvm/pull/106
         node_hash: bytes32 = Program.to((key, value)).get_tree_hash()
 
         await self._insert_node(
@@ -992,10 +992,12 @@ class DataStore:
                     raise Exception(f"Operation in batch is not insert or delete: {change}")
 
             root = await self.get_tree_root(tree_id=tree_id)
+            if root.node_hash == old_root.node_hash:
+                if len(changelist) != 0:
+                    await self.rollback_to_generation(tree_id, old_root.generation)
+                raise ValueError("Changelist resulted in no change to tree data")
             # We delete all "temporary" records stored in root and ancestor tables and store only the final result.
             await self.rollback_to_generation(tree_id, old_root.generation)
-            if root.node_hash == old_root.node_hash:
-                raise ValueError("Changelist resulted in no change to tree data")
             await self.insert_root_with_ancestor_table(tree_id=tree_id, node_hash=root.node_hash, status=status)
             if status == Status.PENDING:
                 new_root = await self.get_pending_root(tree_id=tree_id)
@@ -1133,8 +1135,8 @@ class DataStore:
 
             root_node = hash_to_node[root_node.hash]
             # TODO: Remove ignore when done.
-            #       https://github.com/one/clvm/pull/102
-            #       https://github.com/one/clvm/pull/106
+            #       https://github.com/Chia-Network/clvm/pull/102
+            #       https://github.com/Chia-Network/clvm/pull/106
             program: Program = Program.to(root_node)
 
         return program

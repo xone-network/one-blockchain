@@ -26,6 +26,7 @@ from one.data_layer.data_layer_util import (
     Status,
     StoreProofs,
     Subscription,
+    SyncStatus,
     TerminalNode,
     leaf_hash,
 )
@@ -118,6 +119,7 @@ class DataLayer:
     def _close(self) -> None:
         # TODO: review for anything else we need to do here
         self._shut_down = True
+        self.wallet_rpc.close()
 
     async def _await_closed(self) -> None:
         if self.connection is not None:
@@ -127,6 +129,7 @@ class DataLayer:
         except asyncio.CancelledError:
             pass
         await self.data_store.close()
+        await self.wallet_rpc.await_closed()
 
     async def create_store(
         self, fee: uint64, root: bytes32 = bytes32([0] * 32)
@@ -375,6 +378,7 @@ class DataLayer:
 
             try:
                 timeout = self.config.get("client_timeout", 15)
+                proxy_url = self.config.get("proxy_url", None)
                 success = await insert_from_delta_file(
                     self.data_store,
                     tree_id,
@@ -384,6 +388,7 @@ class DataLayer:
                     self.server_files_location,
                     timeout,
                     self.log,
+                    proxy_url,
                 )
                 if success:
                     self.log.info(
@@ -779,3 +784,21 @@ class DataLayer:
         if not secure:
             for store_id in store_ids:
                 await self.data_store.clear_pending_roots(tree_id=store_id)
+
+    async def get_sync_status(self, store_id: bytes32) -> SyncStatus:
+        async with self.lock:
+            await self._update_confirmation_status(tree_id=store_id)
+
+        if not await self.data_store.tree_id_exists(tree_id=store_id):
+            raise Exception(f"No tree id stored in the local database for {store_id}")
+        root = await self.data_store.get_tree_root(tree_id=store_id)
+        singleton_record = await self.wallet_rpc.dl_latest_singleton(store_id, True)
+        if singleton_record is None:
+            raise Exception(f"No singleton found for {store_id}")
+
+        return SyncStatus(
+            root_hash=self.none_bytes if root.node_hash is None else root.node_hash,
+            generation=root.generation,
+            target_root_hash=singleton_record.root,
+            target_generation=singleton_record.generation,
+        )

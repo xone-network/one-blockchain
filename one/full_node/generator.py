@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
+
 from one.types.blockchain_format.program import Program, SerializedProgram
-from one.types.generator_types import BlockGenerator, GeneratorBlockCacheInterface, CompressorArg
+from one.types.generator_types import BlockGenerator, CompressorArg, GeneratorBlockCacheInterface
 from one.util.ints import uint32
 from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
 from one.wallet.puzzles.rom_bootstrap_generator import get_generator

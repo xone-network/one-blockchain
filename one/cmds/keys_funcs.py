@@ -1,20 +1,19 @@
-import logging
+from __future__ import annotations
+
+import json
 import os
 import sys
-
-from blspy import AugSchemeMPL, G1Element, G2Element, PrivateKey
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from one.consensus.coinbase import create_puzzlehash_for_pk
+from blspy import AugSchemeMPL, G1Element, G2Element, PrivateKey
+
 from one.cmds.passphrase_funcs import obtain_current_passphrase
-from one.daemon.client import connect_to_daemon_and_validate
-from one.daemon.keychain_proxy import KeychainProxy, connect_to_keychain_and_validate, wrap_local_keychain
+from one.consensus.coinbase import create_puzzlehash_for_pk
+from one.types.signing_mode import SigningMode
 from one.util.bech32m import encode_puzzle_hash
-from one.util.errors import KeychainNotSet
 from one.util.config import load_config
-from one.util.default_root import DEFAULT_ROOT_PATH
 from one.util.errors import KeychainException
 from one.util.file_keyring import MAX_LABEL_LENGTH
 from one.util.ints import uint32
@@ -126,51 +125,78 @@ def delete_key_label(fingerprint: int) -> None:
         sys.exit(f"Error: {e}")
 
 
-def show_all_keys(show_mnemonic: bool, non_observer_derivation: bool):
+def show_keys(
+    root_path: Path, show_mnemonic: bool, non_observer_derivation: bool, json_output: bool, fingerprint: Optional[int]
+):
     """
     Prints all keys and mnemonics (if available).
     """
     unlock_keyring()
-    root_path = DEFAULT_ROOT_PATH
     config = load_config(root_path, "config.yaml")
-    all_keys = Keychain().get_keys(True)
+    if fingerprint is None:
+        all_keys = Keychain().get_keys(True)
+    else:
+        all_keys = [Keychain().get_key(fingerprint, True)]
     selected = config["selected_network"]
     prefix = config["network_overrides"]["config"][selected]["address_prefix"]
+
     if len(all_keys) == 0:
-        print("There are no saved private keys")
+        if json_output:
+            print(json.dumps({"keys": []}))
+        else:
+            print("There are no saved private keys")
         return None
-    msg = "Showing all public keys derived from your master seed and private key:"
-    if show_mnemonic:
-        msg = "Showing all public and private keys"
-    print(msg)
-    for key_data in all_keys:
+
+    if not json_output:
+        msg = "Showing all public keys derived from your master seed and private key:"
+        if show_mnemonic:
+            msg = "Showing all public and private keys"
+        print(msg)
+
+    def process_key_data(key_data):
+        key = {}
         sk = key_data.private_key
-        print("")
         if key_data.label is not None:
-            print("Label:", key_data.label)
-        print("Fingerprint:", key_data.fingerprint)
-        print("Master public key (m):", key_data.public_key)
-        print(
-            "Farmer public key (m/12381/8444/0/0):",
-            master_sk_to_farmer_sk(sk).get_g1(),
-        )
-        print("Pool public key (m/12381/8444/1/0):", master_sk_to_pool_sk(sk).get_g1())
+            key["label"] = key_data.label
+
+        key["fingerprint"] = key_data.fingerprint
+        key["master_pk"] = bytes(key_data.public_key).hex()
+        key["farmer_pk"] = bytes(master_sk_to_farmer_sk(sk).get_g1()).hex()
+        key["pool_pk"] = bytes(master_sk_to_pool_sk(sk).get_g1()).hex()
         first_wallet_sk: PrivateKey = (
             master_sk_to_wallet_sk(sk, uint32(0))
             if non_observer_derivation
             else master_sk_to_wallet_sk_unhardened(sk, uint32(0))
         )
         wallet_address: str = encode_puzzle_hash(create_puzzlehash_for_pk(first_wallet_sk.get_g1()), prefix)
-        print(f"First wallet address{' (non-observer)' if non_observer_derivation else ''}: {wallet_address}")
+        key["wallet_address"] = wallet_address
+        key["non_observer"] = non_observer_derivation
+
         if show_mnemonic:
-            print("Master private key (m):", bytes(sk).hex())
-            print(
-                "First wallet secret key (m/12381/8444/2/0):",
-                master_sk_to_wallet_sk(sk, uint32(0)),
-            )
-            mnemonic = bytes_to_mnemonic(key_data.entropy)
-            print("  Mnemonic seed (24 secret words):")
-            print(mnemonic)
+            key["master_sk"] = bytes(sk).hex()
+            key["wallet_sk"] = bytes(master_sk_to_wallet_sk(sk, uint32(0))).hex()
+            key["mnemonic"] = bytes_to_mnemonic(key_data.entropy)
+        return key
+
+    keys = map(process_key_data, all_keys)
+
+    if json_output:
+        print(json.dumps({"keys": list(keys)}))
+    else:
+        for key in keys:
+            print("")
+            if "label" in key:
+                print("Label:", key["label"])
+            print("Fingerprint:", key["fingerprint"])
+            print("Master public key (m):", key["master_pk"])
+            print("Farmer public key (m/12381/8444/0/0):", key["farmer_pk"])
+            print("Pool public key (m/12381/8444/1/0):", key["pool_pk"])
+            print(f"First wallet address{' (non-observer)' if key['non_observer'] else ''}: {key['wallet_address']}")
+            if show_mnemonic:
+                print("Master private key (m):", key["master_sk"])
+                print("First wallet secret key (m/12381/8444/2/0):", key["wallet_sk"])
+                print("  Mnemonic seed (24 secret words):")
+                print(key["mnemonic"])
 
 
 def delete(fingerprint: int):
@@ -231,104 +257,44 @@ def derive_sk_from_hd_path(master_sk: PrivateKey, hd_path_root: str) -> Tuple[Pr
     return (current_sk, "m/" + "/".join(path) + "/")
 
 
-def sign(message: str, private_key: PrivateKey, hd_path: str, as_bytes: bool):
+def sign(message: str, private_key: PrivateKey, hd_path: str, as_bytes: bool, json_output: bool):
     sk: PrivateKey = derive_sk_from_hd_path(private_key, hd_path)[0]
     data = bytes.fromhex(message) if as_bytes else bytes(message, "utf-8")
-    print("Public key:", sk.get_g1())
-    print("Signature:", AugSchemeMPL.sign(sk, data))
+    signing_mode: SigningMode = (
+        SigningMode.BLS_MESSAGE_AUGMENTATION_HEX_INPUT if as_bytes else SigningMode.BLS_MESSAGE_AUGMENTATION_UTF8_INPUT
+    )
+    pubkey_hex: str = bytes(sk.get_g1()).hex()
+    signature_hex: str = bytes(AugSchemeMPL.sign(sk, data)).hex()
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "message": message,
+                    "pubkey": pubkey_hex,
+                    "signature": signature_hex,
+                    "signing_mode": signing_mode.value,
+                }
+            )
+        )
+    else:
+        print(f"Message: {message}")
+        print(f"Public Key: {pubkey_hex}")
+        print(f"Signature: {signature_hex}")
+        print(f"Signing Mode: {signing_mode.value}")
 
 
-def verify(message: str, public_key: str, signature: str):
-    messageBytes = bytes(message, "utf-8")
+def verify(message: str, public_key: str, signature: str, as_bytes: bool):
+    data = bytes.fromhex(message) if as_bytes else bytes(message, "utf-8")
     public_key = G1Element.from_bytes(bytes.fromhex(public_key))
     signature = G2Element.from_bytes(bytes.fromhex(signature))
-    print(AugSchemeMPL.verify(public_key, messageBytes, signature))
+    print(AugSchemeMPL.verify(public_key, data, signature))
 
 
-async def migrate_keys(root_path: Path, forced: bool = False) -> bool:
-    from one.util.keyring_wrapper import KeyringWrapper
-    from one.util.misc import prompt_yes_no
-
-    deprecation_message = (
-        "\nLegacy keyring support is deprecated and will be removed in an upcoming version. "
-        "You need to migrate your keyring to continue using One.\n"
-    )
-
-    # Check if the keyring needs a full migration (i.e. if it's using the old keyring)
-    if Keychain.needs_migration():
-        print(deprecation_message)
-        return await KeyringWrapper.get_shared_instance().migrate_legacy_keyring_interactive()
+def as_bytes_from_signing_mode(signing_mode_str: str) -> bool:
+    if signing_mode_str == SigningMode.BLS_MESSAGE_AUGMENTATION_HEX_INPUT.value:
+        return True
     else:
-        already_checked_marker = KeyringWrapper.get_shared_instance().keys_root_path / ".checked_legacy_migration"
-        if forced and already_checked_marker.exists():
-            return True
-
-        log = logging.getLogger("migrate_keys")
-        config = load_config(root_path, "config.yaml")
-        # Connect to the daemon here first to see if ts running since `connect_to_keychain_and_validate` just tries to
-        # connect forever if it's not up.
-        keychain_proxy: Optional[KeychainProxy] = None
-        daemon = await connect_to_daemon_and_validate(root_path, config, quiet=True)
-        if daemon is not None:
-            await daemon.close()
-            keychain_proxy = await connect_to_keychain_and_validate(root_path, log)
-        if keychain_proxy is None:
-            keychain_proxy = wrap_local_keychain(Keychain(), log=log)
-
-        try:
-            legacy_keyring = Keychain(force_legacy=True)
-            all_sks = await keychain_proxy.get_all_private_keys()
-            all_legacy_sks = legacy_keyring.get_all_private_keys()
-            set_legacy_sks = {str(x[0]) for x in all_legacy_sks}
-            set_sks = {str(x[0]) for x in all_sks}
-            missing_legacy_keys = set_legacy_sks - set_sks
-            keys_to_migrate = [x for x in all_legacy_sks if str(x[0]) in missing_legacy_keys]
-        except KeychainNotSet:
-            keys_to_migrate = []
-
-        if len(keys_to_migrate) > 0:
-            print(deprecation_message)
-            print(f"Found {len(keys_to_migrate)} key(s) that need migration:")
-            for key, _ in keys_to_migrate:
-                print(f"Fingerprint: {key.get_g1().get_fingerprint()}")
-
-            print()
-            if not prompt_yes_no("Migrate these keys?"):
-                await keychain_proxy.close()
-                print("Migration aborted, can't run any one commands.")
-                return False
-
-            for sk, seed_bytes in keys_to_migrate:
-                mnemonic = bytes_to_mnemonic(seed_bytes)
-                await keychain_proxy.add_private_key(mnemonic)
-                fingerprint = sk.get_g1().get_fingerprint()
-                print(f"Added private key with public key fingerprint {fingerprint}")
-
-            print(f"Migrated {len(keys_to_migrate)} key(s)")
-
-            print("Verifying migration results...", end="")
-            all_sks = await keychain_proxy.get_all_private_keys()
-            await keychain_proxy.close()
-            set_sks = {str(x[0]) for x in all_sks}
-            keys_present = set_sks.issuperset(set(map(lambda x: str(x[0]), keys_to_migrate)))
-            if keys_present:
-                print(" Verified")
-                print()
-                response = prompt_yes_no("Remove key(s) from old keyring (recommended)?")
-                if response:
-                    legacy_keyring.delete_keys(keys_to_migrate)
-                    print(f"Removed {len(keys_to_migrate)} key(s) from old keyring")
-                print("Migration complete")
-            else:
-                print(" Failed")
-                return False
-            return True
-        elif not forced:
-            print("No keys need migration")
-        if already_checked_marker.parent.exists():
-            already_checked_marker.touch()
-        await keychain_proxy.close()
-    return True
+        return False
 
 
 def _clear_line_part(n: int):

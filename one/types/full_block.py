@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List, Optional, Set
+
 from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.foliage import Foliage, FoliageTransactionBlock, TransactionsInfo
 from one.types.blockchain_format.program import SerializedProgram

@@ -1,22 +1,22 @@
+from __future__ import annotations
+
 import logging
-from typing import Tuple, List, Optional
+from typing import List, Optional, Tuple
+
 from blspy import G1Element
 from clvm.casts import int_from_bytes, int_to_bytes
 
 from one.clvm.singleton import SINGLETON_LAUNCHER
 from one.consensus.block_rewards import calculate_pool_reward
 from one.consensus.coinbase import pool_parent_id
-from one.pools.pool_wallet_info import PoolState, LEAVING_POOL, SELF_POOLING
-
+from one.pools.pool_wallet_info import LEAVING_POOL, SELF_POOLING, PoolState
 from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.program import Program, SerializedProgram
-
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.coin_spend import CoinSpend
+from one.util.ints import uint32, uint64
 from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
 from one.wallet.puzzles.singleton_top_layer import puzzle_for_singleton
-
-from one.util.ints import uint32, uint64
 
 log = logging.getLogger(__name__)
 # "Full" is the outer singleton, with the inner puzzle filled in

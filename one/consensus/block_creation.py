@@ -14,7 +14,7 @@ from one.consensus.block_record import BlockRecord
 from one.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward, \
     calculate_base_community_reward, calculate_base_timelord_fee
 from one.consensus.blockchain_interface import BlockchainInterface
-from one.consensus.coinbase import create_farmer_coin, create_pool_coin, create_community_coin, create_timelord_coin
+from one.consensus.coinbase import create_farmer_coin, create_pool_coin, create_timelord_coin, create_community_coin
 from one.consensus.constants import ConsensusConstants
 from one.consensus.cost_calculator import NPCResult
 from one.full_node.mempool_check_conditions import get_name_puzzle_conditions
@@ -174,7 +174,6 @@ def create_foliage(
                 uint64(calculate_base_farmer_reward(curr.height) + curr.fees),
                 constants.GENESIS_CHALLENGE,
             )
-
             community_coin = create_community_coin(
                 curr.height,
                 curr.community_puzzle_hash,

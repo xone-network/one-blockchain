@@ -1102,6 +1102,9 @@ class DataLayerWallet:
             self.wallet_state_manager.constants.MAX_BLOCK_COST_CLVM,
         )
 
+    def get_name(self) -> str:
+        return self.wallet_info.name
+
     ##########
     # OFFERS #
     ##########
@@ -1123,7 +1126,7 @@ class DataLayerWallet:
             }
         )
 
-    async def get_coins_to_offer(self, launcher_id: bytes32, amount: uint64, _: Optional[uint128]) -> Set[Coin]:
+    async def get_coins_to_offer(self, launcher_id: bytes32, *args: Any, **kwargs: Any) -> Set[Coin]:
         record = await self.get_latest_singleton(launcher_id)
         if record is None:
             raise ValueError(f"DL wallet does not know about launcher ID {launcher_id}")
@@ -1141,6 +1144,7 @@ class DataLayerWallet:
         driver_dict: Dict[bytes32, PuzzleInfo],
         solver: Solver,
         fee: uint64 = uint64(0),
+        old: bool = False,
     ) -> Offer:
         dl_wallet = None
         for wallet in wallet_state_manager.wallets.values():
@@ -1203,7 +1207,7 @@ class DataLayerWallet:
             for k, v in offer_dict.items()
             if v > 0
         }
-        return Offer(requested_payments, SpendBundle.aggregate(all_bundles), driver_dict)
+        return Offer(requested_payments, SpendBundle.aggregate(all_bundles), driver_dict, old)
 
     @staticmethod
     async def finish_graftroot_solutions(offer: Offer, solver: Solver) -> Offer:
@@ -1277,7 +1281,7 @@ class DataLayerWallet:
                     spend = new_spend
             new_spends.append(spend)
 
-        return Offer({}, SpendBundle(new_spends, offer.bundle.aggregated_signature), offer.driver_dict)
+        return Offer({}, SpendBundle(new_spends, offer.bundle.aggregated_signature), offer.driver_dict, offer.old)
 
     @staticmethod
     async def get_offer_summary(offer: Offer) -> Dict[str, Any]:
@@ -1318,6 +1322,7 @@ class DataLayerWallet:
         exclude: Optional[List[Coin]] = None,
         min_coin_amount: Optional[uint64] = None,
         max_coin_amount: Optional[uint64] = None,
+        excluded_coin_amounts: Optional[List[uint64]] = None,
     ) -> Set[Coin]:
         raise RuntimeError("DataLayerWallet does not support select_coins()")
 

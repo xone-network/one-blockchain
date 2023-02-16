@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from typing import List
 
 from blspy import AugSchemeMPL, G1Element
 from clvm import KEYWORD_FROM_ATOM
 from clvm_tools.binutils import disassemble as bu_disassemble
 
-from one.types.blockchain_format.coin import Coin
-from one.types.blockchain_format.program import Program, INFINITE_COST
 from one.consensus.default_constants import DEFAULT_CONSTANTS
+from one.types.blockchain_format.coin import Coin
+from one.types.blockchain_format.program import INFINITE_COST, Program
 from one.types.condition_opcodes import ConditionOpcode
 from one.util.condition_tools import conditions_dict_for_solution, pkm_pairs_for_conditions_dict
 from one.util.hash import std_hash
@@ -68,7 +70,7 @@ def debug_spend_bundle(spend_bundle, agg_sig_additional_data=DEFAULT_CONSTANTS.A
             continue
 
         print(f"consuming coin {dump_coin(coin)}")
-        print(f"  with id {coin_name}")
+        print(f"  with id {coin_name.hex()}")
         print()
         print(f"\nbrun -y main.sym '{bu_disassemble(puzzle_reveal)}' '{bu_disassemble(solution)}'")
         error, conditions, cost = conditions_dict_for_solution(puzzle_reveal, solution, INFINITE_COST)
@@ -123,19 +125,19 @@ def debug_spend_bundle(spend_bundle, agg_sig_additional_data=DEFAULT_CONSTANTS.A
     print("spent coins")
     for coin in sorted(spent, key=lambda _: _.name()):
         print(f"  {dump_coin(coin)}")
-        print(f"      => spent coin id {coin.name()}")
+        print(f"      => spent coin id {coin.name().hex()}")
     print()
     print("created coins")
     for coin in sorted(created, key=lambda _: _.name()):
         print(f"  {dump_coin(coin)}")
-        print(f"      => created coin id {coin.name()}")
+        print(f"      => created coin id {coin.name().hex()}")
 
     if ephemeral:
         print()
         print("ephemeral coins")
         for coin in sorted(ephemeral, key=lambda _: _.name()):
             print(f"  {dump_coin(coin)}")
-            print(f"      => created coin id {coin.name()}")
+            print(f"      => created coin id {coin.name().hex()}")
 
     created_coin_announcement_pairs = [(_, std_hash(b"".join(_)).hex()) for _ in created_coin_announcements]
     if created_coin_announcement_pairs:

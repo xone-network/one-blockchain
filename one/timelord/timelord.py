@@ -14,7 +14,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from chiavdf import create_discriminant, prove
 
-import one.server.ws_connection as ws
 from one.consensus.constants import ConsensusConstants
 from one.consensus.pot_iterations import calculate_sp_iters, is_overflow_block
 from one.protocols import timelord_protocol
@@ -22,6 +21,7 @@ from one.protocols.protocol_message_types import ProtocolMessageTypes
 from one.rpc.rpc_server import default_get_connections
 from one.server.outbound_message import NodeType, make_msg
 from one.server.server import OneServer
+from one.server.ws_connection import WSOneConnection
 from one.timelord.iters_from_block import iters_from_block
 from one.timelord.timelord_state import LastState
 from one.timelord.types import Chain, IterationType, StateType
@@ -168,7 +168,7 @@ class Timelord:
     def get_connections(self, request_node_type: Optional[NodeType]) -> List[Dict[str, Any]]:
         return default_get_connections(server=self.server, request_node_type=request_node_type)
 
-    async def on_connect(self, connection: ws.WSOneConnection):
+    async def on_connect(self, connection: WSOneConnection):
         pass
 
     def get_vdf_server_port(self) -> Optional[uint16]:
@@ -271,9 +271,10 @@ class Timelord:
                         f"because its iters are too low"
                     )
                 return None
+
         fee_ph = block.foliage.foliage_block_data.timelord_fee_puzzle_hash
         if "xone_target_address" in self.config and fee_ph != decode_puzzle_hash(self.config["xone_target_address"]):
-            log.debug(
+            log.info(
                 f"Will not infuse unfinished block {block.rc_prev} sp total iters {block_sp_total_iters}, "
                 f"because another timelord will"
             )
@@ -488,16 +489,16 @@ class Timelord:
                     # This proof is on an outdated challenge, so don't use it
                     continue
                 iters_from_sub_slot_start = cc_info.number_of_iterations + self.last_state.get_last_ip()
-                timelord_puzzle_hash = self.constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH
+                timelord_fee_puzzle_hash = self.constants.GENESIS_PRE_FARM_TIMELORD_PUZZLE_HASH
                 if "xone_target_address" in self.config:
-                    timelord_puzzle_hash = decode_puzzle_hash(self.config["xone_target_address"])
+                    timelord_fee_puzzle_hash = decode_puzzle_hash(self.config["xone_target_address"])
                 response = timelord_protocol.NewSignagePointVDF(
                     signage_point_index,
                     dataclasses.replace(cc_info, number_of_iterations=iters_from_sub_slot_start),
                     cc_proof,
                     rc_info,
                     rc_proof,
-                    timelord_puzzle_hash,
+                    timelord_fee_puzzle_hash,
                 )
                 if self._server is not None:
                     msg = make_msg(ProtocolMessageTypes.new_signage_point_vdf, response)

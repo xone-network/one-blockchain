@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
 
 from one.cmds.cmds_util import get_any_service_client
 from one.cmds.units import units
@@ -7,8 +8,7 @@ from one.consensus.block_record import BlockRecord
 from one.rpc.farmer_rpc_client import FarmerRpcClient
 from one.rpc.full_node_rpc_client import FullNodeRpcClient
 from one.rpc.wallet_rpc_client import WalletRpcClient
-from one.util.misc import format_bytes
-from one.util.misc import format_minutes
+from one.util.misc import format_bytes, format_minutes
 from one.util.network import is_localhost
 
 SECONDS_PER_BLOCK = (24 * 3600) / 4608

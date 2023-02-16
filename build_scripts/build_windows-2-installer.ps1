@@ -2,8 +2,9 @@
 
 $ErrorActionPreference = "Stop"
 
+git status
+git submodule
 
-$env:ONE_INSTALLER_VERSION = '1.6.1'
 if (-not (Test-Path env:ONE_INSTALLER_VERSION)) {
   $env:ONE_INSTALLER_VERSION = '0.0.0'
   Write-Output "WARNING: No environment variable ONE_INSTALLER_VERSION set. Using 0.0.0"
@@ -53,6 +54,14 @@ $packageName = "One-$packageVersion"
 
 Write-Output "packageName is $packageName"
 
+Write-Output "   ---"
+Write-Output "fix version in package.json"
+choco install jq
+cp package.json package.json.orig
+jq --arg VER "$env:ONE_INSTALLER_VERSION" '.version=$VER' package.json > temp.json
+rm package.json
+mv temp.json package.json
+Write-Output "   ---"
 
 Write-Output "   ---"
 Write-Output "electron-builder"
@@ -67,10 +76,9 @@ If ($env:HAS_SECRET) {
    signtool.exe verify /v /pa .\dist\OneSetup-$packageVersion.exe
    }   Else    {
    Write-Output "Skipping verify signatures - no authorization to install certificates"
+
 }
-if (-not (Test-Path env:GITHUB_WORKSPACE)) {
-  $env:GITHUB_WORKSPACE = "..\..\.."
-}
+
 Write-Output "   ---"
 Write-Output "Moving final installers to expected location"
 Write-Output "   ---"

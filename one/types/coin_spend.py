@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List
+
 from one.types.blockchain_format.coin import Coin
-from one.types.blockchain_format.program import SerializedProgram, INFINITE_COST
+from one.types.blockchain_format.program import INFINITE_COST, SerializedProgram
 from one.util.chain_utils import additions_for_solution, fee_for_solution
 from one.util.streamable import Streamable, streamable
 

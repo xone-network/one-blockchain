@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.sized_bytes import bytes32
-from one.util.ints import uint32
+from one.types.coin_record import CoinRecord
+from one.util.ints import uint32, uint64
 from one.wallet.util.wallet_types import WalletType
 
 
@@ -25,3 +26,6 @@ class WalletCoinRecord:
 
     def name(self) -> bytes32:
         return self.coin.name()
+
+    def to_coin_record(self, timestamp: uint64) -> CoinRecord:
+        return CoinRecord(self.coin, self.confirmed_block_height, self.spent_block_height, self.coinbase, timestamp)

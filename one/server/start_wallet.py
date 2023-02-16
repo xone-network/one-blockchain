@@ -1,8 +1,10 @@
-import pathlib
+from __future__ import annotations
+
 import os
-from multiprocessing import freeze_support
+import pathlib
 import sys
-from typing import Dict, Optional
+from multiprocessing import freeze_support
+from typing import Any, Dict, Optional
 
 from one.consensus.constants import ConsensusConstants
 from one.consensus.default_constants import DEFAULT_CONSTANTS
@@ -11,9 +13,11 @@ from one.server.outbound_message import NodeType
 from one.server.start_service import RpcInfo, Service, async_run
 from one.types.peer_info import PeerInfo
 from one.util.one_logging import initialize_service_logging
-from one.util.config import load_config_cli, load_config
+from one.util.config import load_config, load_config_cli
 from one.util.default_root import DEFAULT_ROOT_PATH
 from one.util.keychain import Keychain
+from one.util.network import get_host_addr
+from one.util.task_timing import maybe_manage_task_instrumentation
 from one.wallet.wallet_node import WalletNode
 
 # See: https://bugs.python.org/issue29288
@@ -26,7 +30,7 @@ SERVICE_NAME = "wallet"
 
 def create_wallet_service(
     root_path: pathlib.Path,
-    config: Dict,
+    config: Dict[str, Any],
     consensus_constants: ConsensusConstants,
     keychain: Optional[Keychain] = None,
     connect_to_daemon: bool = True,
@@ -53,8 +57,10 @@ def create_wallet_service(
     fnp = service_config.get("full_node_peer")
 
     if fnp:
-        connect_peers = [PeerInfo(fnp["host"], fnp["port"])]
-        node.full_node_peer = PeerInfo(fnp["host"], fnp["port"])
+        node.full_node_peer = PeerInfo(
+            str(get_host_addr(fnp["host"], prefer_ipv6=config.get("prefer_ipv6", False))), fnp["port"]
+        )
+        connect_peers = [node.full_node_peer]
     else:
         connect_peers = []
         node.full_node_peer = None
@@ -88,7 +94,7 @@ async def async_main() -> int:
     config[SERVICE_NAME] = service_config
 
     # This is simulator
-    local_test = service_config["testing"]
+    local_test = service_config.get("testing", False)
     if local_test is True:
         from one.simulator.block_tools import test_constants
 
@@ -108,13 +114,9 @@ async def async_main() -> int:
 
 def main() -> int:
     freeze_support()
-    if os.getenv("ONE_INSTRUMENT_WALLET", 0) != 0:
-        from one.util.task_timing import start_task_instrumentation, stop_task_instrumentation
-        import atexit
 
-        start_task_instrumentation()
-        atexit.register(stop_task_instrumentation)
-    return async_run(async_main())
+    with maybe_manage_task_instrumentation(enable=os.environ.get("ONE_INSTRUMENT_WALLET") is not None):
+        return async_run(async_main())
 
 
 if __name__ == "__main__":

@@ -25,26 +25,25 @@ _reward_per = [
     (30, 30000000),
     (20, 40000000),
     (15, 60000000),
+    (10, 60000000),
 ]
 
 
-def calculate_reward(height: uint32, index: int = 0) -> int:
-    if height >= 60000000:
-        return 10
+def calculate_reward(height: uint32, index: int = -1) -> int:
+    _reward, _height  = _reward_per[index]
+    if height >= _height if index == -1 else height < _height:
+        return _reward
     else:
-        _reward, _height,  = _reward_per[index]
-        if height < _height:
-            return _reward
-        else:
-            return calculate_reward(height, ++index)
+        index += 1
+        return calculate_reward(height, index)
 
 
 def calculate_pool_reward(height: uint32) -> uint64:
     """
     Returns the pool reward at a certain block height. The pool earns 7/8 of the reward in each block. If the farmer
     is solo farming, they act as the pool, and therefore earn the entire block reward.
-    These halving events will not be hit at the exact times
-    (3 years, etc), due to fluctuations in difficulty. They will likely come early, if the network space and VDF
+    These halving events will not be hit at the exact times,
+    due to fluctuations in difficulty. They will likely come early, if the network space and VDF
     rates increase continuously.
     """
     return uint64(int((7 / 8) * calculate_reward(height) * _mojo_per_one))
@@ -55,12 +54,11 @@ def calculate_base_farmer_reward(height: uint32) -> uint64:
     Returns the base farmer reward at a certain block height.
     The base fee reward is 1/8 of total block reward
 
-    Returns the coinbase reward at a certain block height. These halving events will not be hit at the exact times
-    (3 years, etc), due to fluctuations in difficulty. They will likely come early, if the network space and VDF
+    Returns the coinbase reward at a certain block height. These halving events will not be hit at the exact times,
+    due to fluctuations in difficulty. They will likely come early, if the network space and VDF
     rates increase continuously.
     """
     return uint64(int((1 / 8) * calculate_reward(height) * _mojo_per_one))
-
 
 def calculate_base_community_reward(height: uint32) -> uint64:
     """

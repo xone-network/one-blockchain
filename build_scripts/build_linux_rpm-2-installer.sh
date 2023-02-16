@@ -83,9 +83,11 @@ if [ "$REDHAT_PLATFORM" = "arm64" ]; then
 fi
 PRODUCT_NAME="one"
 echo electron-builder build --linux rpm "${OPT_ARCH}" \
+  --config.extraMetadata.name=one-blockchain \
   --config.productName="${PRODUCT_NAME}" --config.linux.desktop.Name="One Blockchain" \
   --config.rpm.packageName="one-blockchain"
 electron-builder build --linux rpm "${OPT_ARCH}" \
+  --config.extraMetadata.name=one-blockchain \
   --config.productName="${PRODUCT_NAME}" --config.linux.desktop.Name="One Blockchain" \
   --config.rpm.packageName="one-blockchain"
 LAST_EXIT_CODE=$?

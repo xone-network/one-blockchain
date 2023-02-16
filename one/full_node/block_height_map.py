@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from one.util.ints import uint32
+
+import aiofiles
+
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.blockchain_format.sub_epoch_summary import SubEpochSummary
-from pathlib import Path
-import aiofiles
-from dataclasses import dataclass
-from one.util.streamable import Streamable, streamable
-from one.util.files import write_file_async
 from one.util.db_wrapper import DBWrapper2
+from one.util.files import write_file_async
+from one.util.ints import uint32
+from one.util.streamable import Streamable, streamable
 
 log = logging.getLogger(__name__)
 

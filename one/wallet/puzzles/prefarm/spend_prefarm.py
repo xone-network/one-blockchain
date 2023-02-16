@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 
 from blspy import G2Element
@@ -13,7 +15,7 @@ from one.util.bech32m import decode_puzzle_hash
 from one.util.condition_tools import parse_sexp_to_conditions
 from one.util.config import load_config
 from one.util.default_root import DEFAULT_ROOT_PATH
-from one.util.ints import uint32, uint16
+from one.util.ints import uint16, uint32
 
 
 def print_conditions(spend_bundle: SpendBundle):
@@ -29,14 +31,17 @@ def print_conditions(spend_bundle: SpendBundle):
 
 
 async def main() -> None:
-    rpc_port: uint16 = uint16(8555)
+    rpc_port: uint16 = uint16(11107)
     self_hostname = "localhost"
     path = DEFAULT_ROOT_PATH
     config = load_config(path, "config.yaml")
     client = await FullNodeRpcClient.create(self_hostname, rpc_port, path, config)
     try:
-        farmer_prefarm = (await client.get_block_record_by_height(1)).reward_claims_incorporated[1]
-        pool_prefarm = (await client.get_block_record_by_height(1)).reward_claims_incorporated[0]
+        block_record = await client.get_block_record_by_height(1)
+        assert block_record is not None
+        assert block_record.reward_claims_incorporated is not None
+        farmer_prefarm = block_record.reward_claims_incorporated[1]
+        pool_prefarm = block_record.reward_claims_incorporated[0]
 
         pool_amounts = int(calculate_pool_reward(uint32(0)) / 2)
         farmer_amounts = int(calculate_base_farmer_reward(uint32(0)) / 2)

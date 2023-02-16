@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import asyncio
 import dataclasses
 import logging
 import math
-from multiprocessing.context import BaseContext
 import pathlib
 import random
-from concurrent.futures.process import ProcessPoolExecutor
 import tempfile
-from typing import Dict, IO, List, Optional, Tuple, Awaitable
+from concurrent.futures.process import ProcessPoolExecutor
+from multiprocessing.context import BaseContext
+from typing import IO, Awaitable, Dict, List, Optional, Tuple
 
 from one.consensus.block_header_validation import validate_finished_header_block
 from one.consensus.block_record import BlockRecord
@@ -21,9 +23,9 @@ from one.consensus.pot_iterations import (
     calculate_sp_iters,
     is_overflow_block,
 )
-from one.util.chunks import chunks
 from one.consensus.vdf_info_computation import get_signage_point_vdf_info
 from one.types.blockchain_format.classgroup import ClassgroupElement
+from one.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.blockchain_format.slots import ChallengeChainSubSlot, RewardChainSubSlot
 from one.types.blockchain_format.sub_epoch_summary import SubEpochSummary
@@ -31,14 +33,15 @@ from one.types.blockchain_format.vdf import VDFInfo, VDFProof
 from one.types.end_of_slot_bundle import EndOfSubSlotBundle
 from one.types.header_block import HeaderBlock
 from one.types.weight_proof import (
+    RecentChainData,
     SubEpochChallengeSegment,
     SubEpochData,
+    SubEpochSegments,
     SubSlotData,
     WeightProof,
-    SubEpochSegments,
-    RecentChainData,
 )
 from one.util.block_cache import BlockCache
+from one.util.chunks import chunks
 from one.util.hash import std_hash
 from one.util.ints import uint8, uint32, uint64, uint128
 from one.util.setproctitle import getproctitle, setproctitle
@@ -636,7 +639,6 @@ class WeightProofHandler:
                         ses_fork_idx,
                     )
                 )
-
                 valid, _ = await task
         return valid, fork_point, summaries
 
@@ -1307,7 +1309,8 @@ def _validate_pospace_recent_chain(
     else:
         cc_sp_hash = block.reward_chain_block.challenge_chain_sp_vdf.output.get_hash()
     assert cc_sp_hash is not None
-    q_str = block.reward_chain_block.proof_of_space.verify_and_get_quality_string(
+    q_str = verify_and_get_quality_string(
+        block.reward_chain_block.proof_of_space,
         constants,
         challenge if not overflow else prev_challenge,
         cc_sp_hash,
@@ -1354,7 +1357,8 @@ def __validate_pospace(
 
     # validate proof of space
     assert sub_slot_data.proof_of_space is not None
-    q_str = sub_slot_data.proof_of_space.verify_and_get_quality_string(
+    q_str = verify_and_get_quality_string(
+        sub_slot_data.proof_of_space,
         constants,
         challenge,
         cc_sp_hash,

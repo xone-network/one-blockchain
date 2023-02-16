@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import aiohttp
 from blspy import AugSchemeMPL, G1Element, G2Element, PrivateKey
 
-import one.server.ws_connection as ws  # lgtm [py/import-and-import-from]
 from one.consensus.constants import ConsensusConstants
 from one.daemon.keychain_proxy import KeychainProxy, connect_to_keychain_and_validate, wrap_local_keychain
 from one.plot_sync.delta import Delta
@@ -44,6 +43,7 @@ from one.util.errors import KeychainProxyConnectionFailure
 from one.util.hash import std_hash
 from one.util.ints import uint8, uint16, uint32, uint64
 from one.util.keychain import Keychain
+from one.util.logging import TimedDuplicateFilter
 from one.wallet.derive_keys import (
     find_authentication_sk,
     find_owner_sk,
@@ -105,6 +105,9 @@ class Farmer:
         self.server: Any = None
         self.state_changed_callback: Optional[Callable] = None
         self.log = log
+        self.log.addFilter(TimedDuplicateFilter("No pool specific authentication_token_timeout.*", 60 * 10))
+        self.log.addFilter(TimedDuplicateFilter("No pool specific difficulty has been set.*", 60 * 10))
+
         self.started = False
         self.harvester_handshake_task: Optional[asyncio.Task] = None
 
@@ -257,7 +260,7 @@ class Farmer:
             ErrorResponse(uint16(PoolErrorCode.REQUEST_FAILED.value), error_message).to_json_dict()
         )
 
-    def on_disconnect(self, connection: ws.WSOneConnection):
+    def on_disconnect(self, connection: WSOneConnection):
         self.log.info(f"peer disconnected {connection.get_peer_logging()}")
         self.state_changed("close_connection", {})
         if connection.connection_type is NodeType.HARVESTER:
@@ -630,6 +633,13 @@ class Farmer:
                     self.log.error(f"Could not find authentication sk for {pool_config.p2_singleton_puzzle_hash}")
                     continue
                 authentication_token_timeout = pool_state["authentication_token_timeout"]
+                if authentication_token_timeout is None:
+                    self.log.error(
+                        f"No pool specific authentication_token_timeout has been set for"
+                        f"{pool_config.p2_singleton_puzzle_hash}, check communication with the pool."
+                    )
+                    return None
+
                 authentication_token = get_current_authentication_token(authentication_token_timeout)
                 message: bytes32 = std_hash(
                     AuthenticationPayload(

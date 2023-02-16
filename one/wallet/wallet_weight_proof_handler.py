@@ -1,22 +1,17 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import tempfile
 from concurrent.futures.process import ProcessPoolExecutor
 from multiprocessing.context import BaseContext
-from typing import IO, List, Tuple, Optional
+from typing import IO, List, Optional, Tuple
 
 from one.consensus.block_record import BlockRecord
 from one.consensus.constants import ConsensusConstants
-from one.full_node.weight_proof import (
-    _validate_sub_epoch_summaries,
-    validate_weight_proof_inner,
-)
+from one.full_node.weight_proof import _validate_sub_epoch_summaries, validate_weight_proof_inner
 from one.types.blockchain_format.sub_epoch_summary import SubEpochSummary
-
-from one.types.weight_proof import (
-    WeightProof,
-)
-
+from one.types.weight_proof import WeightProof
 from one.util.ints import uint32
 from one.util.setproctitle import getproctitle, setproctitle
 

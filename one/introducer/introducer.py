@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import time
 from typing import Any, Callable, Dict, List, Optional
 
 from one.rpc.rpc_server import default_get_connections
+from one.server.introducer_peers import VettedPeer
 from one.server.outbound_message import NodeType
 from one.server.server import OneServer
-from one.server.introducer_peers import VettedPeer
 from one.server.ws_connection import WSOneConnection
 from one.util.ints import uint64
 

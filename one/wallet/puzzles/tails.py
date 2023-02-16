@@ -1,20 +1,22 @@
-from typing import Tuple, Dict, List, Optional, Any
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Tuple
 
 from one.types.blockchain_format.program import Program
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.spend_bundle import SpendBundle
-from one.util.ints import uint64
 from one.util.byte_types import hexstr_to_bytes
-from one.wallet.cat_wallet.lineage_store import CATLineageStore
-from one.wallet.lineage_proof import LineageProof
-from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
+from one.util.ints import uint64
+from one.wallet.cat_wallet.cat_info import CATInfo
 from one.wallet.cat_wallet.cat_utils import (
+    SpendableCAT,
     construct_cat_puzzle,
     unsigned_spend_bundle_for_spendable_cats,
-    SpendableCAT,
 )
+from one.wallet.cat_wallet.lineage_store import CATLineageStore
+from one.wallet.lineage_proof import LineageProof
 from one.wallet.puzzles.cat_loader import CAT_MOD
-from one.wallet.cat_wallet.cat_info import CATInfo
+from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
 from one.wallet.transaction_record import TransactionRecord
 
 GENESIS_BY_ID_MOD = load_clvm_maybe_recompile("genesis_by_coin_id.clvm")

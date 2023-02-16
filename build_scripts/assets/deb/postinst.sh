@@ -4,3 +4,4 @@
 set -e
 
 ln -s /opt/one/resources/app.asar.unpacked/daemon/one /usr/bin/one || true
+ln -s /opt/one/one-blockchain /usr/bin/one-blockchain || true

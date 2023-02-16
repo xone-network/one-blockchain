@@ -1,22 +1,24 @@
+from __future__ import annotations
+
 import logging
 from typing import Dict, Optional, Tuple
-from chia_rs import MEMPOOL_MODE, NO_NEG_DIV, get_puzzle_and_solution_for_coin as get_puzzle_and_solution_for_coin_rust
-from one.types.blockchain_format.coin import Coin
+
+from chia_rs import LIMIT_STACK, MEMPOOL_MODE, NO_NEG_DIV
+from chia_rs import get_puzzle_and_solution_for_coin as get_puzzle_and_solution_for_coin_rust
 
 from one.consensus.cost_calculator import NPCResult
-from one.types.spend_bundle_conditions import SpendBundleConditions
+from one.consensus.default_constants import DEFAULT_CONSTANTS
 from one.full_node.generator import setup_generator_args
+from one.types.blockchain_format.coin import Coin
+from one.types.blockchain_format.program import Program, SerializedProgram
+from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.coin_record import CoinRecord
 from one.types.generator_types import BlockGenerator
-from one.types.blockchain_format.sized_bytes import bytes32
+from one.types.spend_bundle_conditions import SpendBundleConditions
 from one.util.errors import Err
-from one.util.ints import uint32, uint64, uint16
-from one.wallet.puzzles.rom_bootstrap_generator import get_generator
-from one.types.blockchain_format.program import SerializedProgram
+from one.util.ints import uint16, uint32, uint64
 from one.wallet.puzzles.load_clvm import load_serialized_clvm_maybe_recompile
-from one.consensus.default_constants import DEFAULT_CONSTANTS
-
-from one.types.blockchain_format.program import Program
+from one.wallet.puzzles.rom_bootstrap_generator import get_generator
 
 GENERATOR_MOD = get_generator()
 
@@ -27,13 +29,8 @@ DESERIALIZE_MOD = load_serialized_clvm_maybe_recompile(
 log = logging.getLogger(__name__)
 
 
-def unwrap(x: Optional[uint32]) -> uint32:
-    assert x is not None
-    return x
-
-
 def get_name_puzzle_conditions(
-    generator: BlockGenerator, max_cost: int, *, cost_per_byte: int, mempool_mode: bool
+    generator: BlockGenerator, max_cost: int, *, cost_per_byte: int, mempool_mode: bool, height: Optional[uint32] = None
 ) -> NPCResult:
     block_program, block_program_args = setup_generator_args(generator)
     size_cost = len(bytes(generator.program)) * cost_per_byte
@@ -41,11 +38,14 @@ def get_name_puzzle_conditions(
     if max_cost < 0:
         return NPCResult(uint16(Err.INVALID_BLOCK_COST.value), None, uint64(0))
 
-    # mempool mode also has these rules apply
-    assert (MEMPOOL_MODE & NO_NEG_DIV) != 0
+    # in mempool mode, the height doesn't matter, because it's always strict.
+    # But otherwise, height must be specified to know which rules to apply
+    assert mempool_mode or height is not None
 
     if mempool_mode:
         flags = MEMPOOL_MODE
+    elif height is not None and height >= DEFAULT_CONSTANTS.SOFT_FORK_HEIGHT:
+        flags = NO_NEG_DIV | LIMIT_STACK
     else:
         # conditions must use integers in canonical encoding (i.e. no redundant
         # leading zeros)

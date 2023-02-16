@@ -27,7 +27,9 @@ from one.protocols.harvester_protocol import (
     PlotSyncResponse,
     PlotSyncStart,
 )
-from one.server.ws_connection import ProtocolMessageTypes, WSOneConnection, make_msg
+from one.protocols.protocol_message_types import ProtocolMessageTypes
+from one.server.outbound_message import make_msg
+from one.server.ws_connection import WSOneConnection
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.util.ints import int16, uint32, uint64
 from one.util.misc import get_list_or_len

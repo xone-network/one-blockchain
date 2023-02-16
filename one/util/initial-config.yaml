@@ -6,6 +6,7 @@ self_hostname: &self_hostname "localhost"
 prefer_ipv6: False
 daemon_port: 11101
 daemon_max_message_size: 50000000 # maximum size of RPC message in bytes
+daemon_heartbeat: 300 # sets the heartbeat for ping/ping interval and timeouts
 inbound_rate_limit_percent: 100
 outbound_rate_limit_percent: 30
 
@@ -25,6 +26,7 @@ network_overrides: &network_overrides
       GENESIS_PRE_FARM_POOL_PUZZLE_HASH: 7fa5ba82d9222f5a8241e21ac0e8d7260abcdc163496e10a74992b7318b8eaba
       MEMPOOL_BLOCK_BUFFER: 10
       MIN_PLOT_SIZE: 18
+
   config:
     mainnet:
       address_prefix: "xone"
@@ -33,8 +35,9 @@ network_overrides: &network_overrides
       address_prefix: "txone"
       default_full_node_port: 11211
 
+
 selected_network: &selected_network "mainnet"
-ALERTS_URL: https://onechain.vip/notify/mainnet_alert.txt
+ALERTS_URL: https://download.onechain.vip/notify/mainnet_alert.txt
 ONE_ALERTS_PUBKEY: 89b7fd87cb56e926ecefb879a29aae308be01f31980569f6a75a69d2a9a69daefd71fb778d865f7c50d6c967e3025937
 
 # public ssl ca is included in source code
@@ -187,7 +190,7 @@ farmer:
 timelord_launcher:
   # The server where the VDF clients will connect to.
   host: *self_hostname
-  port: 18000
+  port: 11108
   # Number of VDF client processes to keep alive in the local machine.
   process_count: 3
   logging: *logging
@@ -213,7 +216,7 @@ timelord:
   # The ip and port where the TCP clients will connect.
   vdf_server:
     host: *self_hostname
-    port: 18000
+    port: 11108
   logging: *logging
   network_overrides: *network_overrides
   selected_network: *selected_network
@@ -344,6 +347,17 @@ full_node:
   # Number of coin_ids | puzzle hashes that node will let wallets subscribe to
   max_subscribe_items: 200000
 
+  # the maximum number of CoinStates will be returned by a RegisterForPhUpdates
+  # request, for untrusted peers
+  max_subscribe_response_items: 100000
+
+  # Number of coin_ids | puzzle hashes that node will let local wallets subscribe to
+  trusted_max_subscribe_items: 2000000
+
+  # the maximum number of CoinStates will be returned by a RegisterForPhUpdates
+  # request, for trusted peers
+  trusted_max_subscribe_response_items: 500000
+
   # List of trusted DNS seeders to bootstrap from.
   # If you modify this, please change the hardcode as well from FullNode.set_server()
   dns_servers:
@@ -355,7 +369,7 @@ full_node:
       host: *self_hostname
       port: 11109
   introducer_peer:
-      host: introducer.onechain.vip  # Chia AWS introducer IPv4/IPv6
+      host: introducer.onechain.vip  # One AWS introducer IPv4/IPv6
       port: 11111
   wallet_peer:
     host: *self_hostname
@@ -364,11 +378,16 @@ full_node:
   network_overrides: *network_overrides
   selected_network: *selected_network
 
+  # Node IDs of trusted wallet peers, allows using more permissive limits on sync
+  trusted_peers:
+    0ThisisanexampleNodeID7ff9d60f1c3fa270c213c0ad0cb89c01274634a7c3cb7: Does_not_matter
+
   ssl:
     private_crt:  "config/ssl/full_node/private_full_node.crt"
     private_key:  "config/ssl/full_node/private_full_node.key"
     public_crt:  "config/ssl/full_node/public_full_node.crt"
     public_key:  "config/ssl/full_node/public_full_node.key"
+  use_one_loop_policy: True
 
 ui:
    # The ui node server (if run) will run on this port
@@ -460,7 +479,7 @@ wallet:
   recent_peer_threshold: 6000
 
   introducer_peer:
-    host: introducer.onechain.vip # Chia AWS introducer IPv4/IPv6
+    host: introducer.onechain.vip # One AWS introducer IPv4/IPv6
     port: 11111
 
   ssl:
@@ -493,8 +512,8 @@ wallet:
   # coins with very small value. Any standard TX under xone_spam_amount is filtered
   spam_filter_after_n_txs: 200
   xone_spam_amount: 1000000
-  # Accept notifications from parties on chain
-  accept_notifications: False
+  # Enable notifications from parties on chain
+  enable_notifications: True
   # The amount someone has to pay you in mojos for you to see their notification
   required_notification_amount: 10000000
 
@@ -513,6 +532,9 @@ data_layer:
   server_files_location: "data_layer/db/server_files_location_CHALLENGE"
   # The timeout for the client to download a file from a server
   client_timeout: 15
+  # If you need use a proxy for download data you can use this setting sample
+  # proxy_url: http://localhost:8888
+
   # Data for running a data layer server.
   host_ip: 0.0.0.0
   host_port: 11103
@@ -524,7 +546,7 @@ data_layer:
   # TODO: what considerations are there in choosing this?
   rpc_port: 11104
   rpc_server_max_request_body_size: 26214400
-  fee: 100000
+  fee: 1000000000
   logging: *logging
 
   # TODO: which of these are really appropriate?

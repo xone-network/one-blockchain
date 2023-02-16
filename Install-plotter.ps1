@@ -41,7 +41,7 @@ function get_bladebit_url()
         [string]$arch
     )
 
-    $GITHUB_BASE_URL = "https://github.com/One-Network/bladebit/releases/download"
+    $GITHUB_BASE_URL = "https://github.com/Chia-Network/bladebit/releases/download"
     $filename = get_bladebit_filename -ver $ver -os $os -arch $arch
 
     "${GITHUB_BASE_URL}/${ver}/${filename}"
@@ -87,7 +87,7 @@ function get_madmax_url()
         [string]$arch
     )
 
-    $GITHUB_BASE_URL = "https://github.com/One-Network/one-plotter-madmax/releases/download"
+    $GITHUB_BASE_URL = "https://github.com/Chia-Network/chia-plotter-madmax/releases/download"
     $madmax_filename = get_madmax_filename -ksize $ksize -ver $ver -os $os -arch $arch
 
     "${GITHUB_BASE_URL}/${ver}/${madmax_filename}"

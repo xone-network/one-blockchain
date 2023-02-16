@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from blspy import G2Element
 
@@ -14,11 +14,12 @@ from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.coin_spend import CoinSpend
 from one.types.spend_bundle import SpendBundle
 from one.util.db_wrapper import DBWrapper2
-from one.util.ints import uint64
+from one.util.ints import uint32, uint64
 from one.wallet.notification_store import Notification, NotificationStore
 from one.wallet.transaction_record import TransactionRecord
 from one.wallet.util.compute_memos import compute_memos_for_spend
 from one.wallet.util.notifications import construct_notification
+from one.wallet.util.wallet_types import WalletType
 
 
 class NotificationManager:
@@ -43,29 +44,39 @@ class NotificationManager:
         return self
 
     async def potentially_add_new_notification(self, coin_state: CoinState, parent_spend: CoinSpend) -> bool:
+        coin_name: bytes32 = coin_state.coin.name()
         if (
             coin_state.spent_height is None
-            or not self.wallet_state_manager.wallet_node.config.get("accept_notifications", False)
-            or self.wallet_state_manager.wallet_node.config.get("required_notification_amount", 0)
+            or not self.wallet_state_manager.wallet_node.config.get("enable_notifications", True)
+            or self.wallet_state_manager.wallet_node.config.get("required_notification_amount", 100000000)
             > coin_state.coin.amount
+            or await self.notification_store.notification_exists(coin_name)
         ):
             return False
         else:
-            coin_name: bytes32 = coin_state.coin.name()
             memos: Dict[bytes32, List[bytes]] = compute_memos_for_spend(parent_spend)
             coin_memos: List[bytes] = memos.get(coin_name, [])
+            wallet_info: Optional[
+                Tuple[uint32, WalletType]
+            ] = await self.wallet_state_manager.get_wallet_id_for_puzzle_hash(bytes32(coin_memos[0]))
             if (
-                len(coin_memos) == 2
+                wallet_info is not None
+                and wallet_info[1] == WalletType.STANDARD_WALLET
+                and len(coin_memos) == 2
                 and construct_notification(bytes32(coin_memos[0]), uint64(coin_state.coin.amount)).get_tree_hash()
                 == coin_state.coin.puzzle_hash
             ):
+                if len(coin_memos[1]) > 10000:  # 10KB
+                    return False
                 await self.notification_store.add_notification(
                     Notification(
                         coin_state.coin.name(),
                         coin_memos[1],
                         uint64(coin_state.coin.amount),
+                        uint32(coin_state.spent_height),
                     )
                 )
+                self.wallet_state_manager.state_changed("new_on_chain_notification")
             return True
 
     async def send_new_notification(

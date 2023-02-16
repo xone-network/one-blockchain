@@ -1,4 +1,6 @@
-from typing import Optional, List
+from __future__ import annotations
+
+from typing import List, Optional
 
 from one.types.condition_opcodes import ConditionOpcode
 

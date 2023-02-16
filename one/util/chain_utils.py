@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List
 
 from clvm.casts import int_from_bytes
@@ -6,10 +8,7 @@ from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.program import SerializedProgram
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.condition_opcodes import ConditionOpcode
-from one.util.condition_tools import (
-    conditions_dict_for_solution,
-    created_outputs_for_conditions_dict,
-)
+from one.util.condition_tools import conditions_dict_for_solution, created_outputs_for_conditions_dict
 
 
 def additions_for_solution(

@@ -1,6 +1,8 @@
-from typing import List, Optional, Tuple, Set
+from __future__ import annotations
 
-from blspy import AugSchemeMPL, PrivateKey, G1Element
+from typing import List, Optional, Set, Tuple
+
+from blspy import AugSchemeMPL, G1Element, PrivateKey
 
 from one.consensus.coinbase import create_puzzlehash_for_pk
 from one.types.blockchain_format.sized_bytes import bytes32

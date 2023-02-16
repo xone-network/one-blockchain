@@ -1,16 +1,17 @@
-from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar, Dict
+from __future__ import annotations
 
-from one.consensus.coinbase import pool_parent_id, farmer_parent_id
+from dataclasses import dataclass
+from typing import Dict, Generic, List, Optional, Tuple, TypeVar
+
+from one.consensus.coinbase import farmer_parent_id, pool_parent_id
 from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.types.mempool_inclusion_status import MempoolInclusionStatus
 from one.types.spend_bundle import SpendBundle
-from one.util.bech32m import encode_puzzle_hash, decode_puzzle_hash
+from one.util.bech32m import decode_puzzle_hash, encode_puzzle_hash
 from one.util.ints import uint8, uint32, uint64
 from one.util.streamable import Streamable, streamable
 from one.wallet.util.transaction_type import TransactionType
-
 
 T = TypeVar("T")
 

@@ -1,4 +1,7 @@
-from one.protocols.protocol_message_types import ProtocolMessageTypes as pmt, ProtocolMessageTypes
+from __future__ import annotations
+
+from one.protocols.protocol_message_types import ProtocolMessageTypes
+from one.protocols.protocol_message_types import ProtocolMessageTypes as pmt
 
 NO_REPLY_EXPECTED = [
     # full_node -> full_node messages

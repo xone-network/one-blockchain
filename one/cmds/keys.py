@@ -1,9 +1,8 @@
-import asyncio
-
-import click
-import sys
+from __future__ import annotations
 
 from typing import Optional, Tuple
+
+import click
 
 
 @click.group("keys", short_help="Manage your keys")
@@ -11,14 +10,10 @@ from typing import Optional, Tuple
 def keys_cmd(ctx: click.Context):
     """Create, delete, view and use your key pairs"""
     from pathlib import Path
-    from .keys_funcs import migrate_keys
 
     root_path: Path = ctx.obj["root_path"]
     if not root_path.is_dir():
         raise RuntimeError("Please initialize (or migrate) your config directory with one init")
-
-    if ctx.obj["force_legacy_keyring_migration"] and not asyncio.run(migrate_keys(root_path, True)):
-        sys.exit(1)
 
 
 @keys_cmd.command("generate", short_help="Generates and adds a key to keychain")
@@ -39,7 +34,7 @@ def generate_cmd(ctx: click.Context, label: Optional[str]):
     check_keys(ctx.obj["root_path"])
 
 
-@keys_cmd.command("show", short_help="Displays all the keys in keychain")
+@keys_cmd.command("show", short_help="Displays all the keys in keychain or the key with the given fingerprint")
 @click.option(
     "--show-mnemonic-seed", help="Show the mnemonic seed of the keys", default=False, show_default=True, is_flag=True
 )
@@ -54,10 +49,27 @@ def generate_cmd(ctx: click.Context, label: Optional[str]):
     show_default=True,
     is_flag=True,
 )
-def show_cmd(show_mnemonic_seed, non_observer_derivation):
-    from .keys_funcs import show_all_keys
+@click.option(
+    "--json",
+    "-j",
+    help=("Displays all the keys in keychain as JSON"),
+    default=False,
+    show_default=True,
+    is_flag=True,
+)
+@click.option(
+    "--fingerprint",
+    "-f",
+    help="Enter the fingerprint of the key you want to view",
+    type=int,
+    required=False,
+    default=None,
+)
+@click.pass_context
+def show_cmd(ctx: click.Context, show_mnemonic_seed, non_observer_derivation, json, fingerprint):
+    from .keys_funcs import show_keys
 
-    show_all_keys(show_mnemonic_seed, non_observer_derivation)
+    show_keys(ctx.obj["root_path"], show_mnemonic_seed, non_observer_derivation, json, fingerprint)
 
 
 @keys_cmd.command("add", short_help="Add a private key by mnemonic")
@@ -198,29 +210,70 @@ def generate_and_print_cmd():
     show_default=True,
     is_flag=True,
 )
-def sign_cmd(message: str, fingerprint: Optional[int], filename: Optional[str], hd_path: str, as_bytes: bool):
+@click.option(
+    "--json",
+    "-j",
+    help=("Write the signature output in JSON format"),
+    default=False,
+    show_default=True,
+    is_flag=True,
+)
+def sign_cmd(
+    message: str, fingerprint: Optional[int], filename: Optional[str], hd_path: str, as_bytes: bool, json: bool
+):
     from .keys_funcs import resolve_derivation_master_key, sign
 
     private_key = resolve_derivation_master_key(filename if filename is not None else fingerprint)
-    sign(message, private_key, hd_path, as_bytes)
+    sign(message, private_key, hd_path, as_bytes, json)
+
+
+def parse_signature_json(json_str: str):
+    import json
+
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError:
+        raise click.BadParameter("Invalid JSON string")
+    if "message" not in data:
+        raise click.BadParameter("Missing 'message' field")
+    if "pubkey" not in data:
+        raise click.BadParameter("Missing 'pubkey' field")
+    if "signature" not in data:
+        raise click.BadParameter("Missing 'signature' field")
+    if "signing_mode" not in data:
+        raise click.BadParameter("Missing 'signing_mode' field")
+
+    return data["message"], data["pubkey"], data["signature"], data["signing_mode"]
 
 
 @keys_cmd.command("verify", short_help="Verify a signature with a pk")
-@click.option("--message", "-d", default=None, help="Enter the message to sign in UTF-8", type=str, required=True)
-@click.option("--public_key", "-p", default=None, help="Enter the pk in hex", type=str, required=True)
-@click.option("--signature", "-s", default=None, help="Enter the signature in hex", type=str, required=True)
-def verify_cmd(message: str, public_key: str, signature: str):
-    from .keys_funcs import verify
+@click.option("--message", "-d", default=None, help="Enter the signed message in UTF-8", type=str)
+@click.option("--public_key", "-p", default=None, help="Enter the pk in hex", type=str)
+@click.option("--signature", "-s", default=None, help="Enter the signature in hex", type=str)
+@click.option(
+    "--as-bytes",
+    "-b",
+    help="Verify the signed message as sequence of bytes rather than UTF-8 string. Ignored if --json is used.",
+    default=False,
+    show_default=True,
+    is_flag=True,
+)
+@click.option(
+    "--json",
+    "-j",
+    help=("Read the signature data from a JSON string. Overrides --message, --public_key, and --signature."),
+    show_default=True,
+    type=str,
+)
+def verify_cmd(message: str, public_key: str, signature: str, as_bytes: bool, json: str):
+    from .keys_funcs import as_bytes_from_signing_mode, verify
 
-    verify(message, public_key, signature)
+    if json is not None:
+        parsed_message, parsed_pubkey, parsed_sig, parsed_signing_mode_str = parse_signature_json(json)
 
-
-@keys_cmd.command("migrate", short_help="Attempt to migrate keys to the One keyring")
-@click.pass_context
-def migrate_cmd(ctx: click.Context):
-    from .keys_funcs import migrate_keys
-
-    asyncio.run(migrate_keys(ctx.obj["root_path"]))
+        verify(parsed_message, parsed_pubkey, parsed_sig, as_bytes_from_signing_mode(parsed_signing_mode_str))
+    else:
+        verify(message, public_key, signature, as_bytes)
 
 
 @keys_cmd.group("derive", short_help="Derive child keys or wallet addresses")
@@ -296,8 +349,10 @@ def search_cmd(
     prefix: Optional[str],
 ):
     import sys
-    from .keys_funcs import search_derive, resolve_derivation_master_key
+
     from blspy import PrivateKey
+
+    from .keys_funcs import resolve_derivation_master_key, search_derive
 
     private_key: Optional[PrivateKey] = None
     fingerprint: Optional[int] = ctx.obj.get("fingerprint", None)

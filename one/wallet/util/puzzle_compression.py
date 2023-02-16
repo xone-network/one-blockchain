@@ -1,18 +1,19 @@
-import zlib
+from __future__ import annotations
 
+import zlib
 from typing import List
 
 from one.types.blockchain_format.program import Program
-from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
+from one.wallet.nft_wallet.nft_puzzles import (
+    NFT_METADATA_UPDATER,
+    NFT_OWNERSHIP_LAYER,
+    NFT_STATE_LAYER_MOD,
+    NFT_TRANSFER_PROGRAM_DEFAULT,
+    SINGLETON_TOP_LAYER_MOD,
+)
 from one.wallet.puzzles import p2_delegated_puzzle_or_hidden_puzzle as standard_puzzle
 from one.wallet.puzzles.cat_loader import CAT_MOD
-from one.wallet.nft_wallet.nft_puzzles import (
-    SINGLETON_TOP_LAYER_MOD,
-    NFT_STATE_LAYER_MOD,
-    NFT_OWNERSHIP_LAYER,
-    NFT_METADATA_UPDATER,
-    NFT_TRANSFER_PROGRAM_DEFAULT,
-)
+from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
 
 # Need the legacy CAT mod for zlib backwards compatibility
 LEGACY_CAT_MOD = Program.fromhex(
@@ -34,6 +35,7 @@ ZDICT = [
     + bytes(NFT_TRANSFER_PROGRAM_DEFAULT),
     bytes(CAT_MOD),
     bytes(OFFER_MOD),
+    b"",  # purposefully break compatibility with older versions
     # more dictionaries go here
 ]
 

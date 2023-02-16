@@ -4,3 +4,4 @@
 set -e
 
 unlink /usr/bin/one || true
+unlink /usr/bin/one-blockchain || true

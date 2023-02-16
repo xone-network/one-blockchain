@@ -1,18 +1,15 @@
-import asyncio
-import traceback
-import os
-import logging
-import sys
+from __future__ import annotations
 
+import asyncio
+import logging
+import os
+import sys
+import traceback
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from one.plotters.plotters_util import get_venv_bin, reset_loop_policy_for_windows, run_command, run_plotter
 from one.plotting.create_plots import resolve_plot_keys
-from one.plotters.plotters_util import (
-    run_plotter,
-    run_command,
-    reset_loop_policy_for_windows,
-    get_venv_bin,
-)
 
 log = logging.getLogger(__name__)
 
@@ -36,9 +33,9 @@ def get_madmax_exec_venv_path(ksize: int = 32) -> Optional[Path]:
     venv_bin_path = get_venv_bin()
     if not venv_bin_path:
         return None
-    madmax_exec = "one_plot"
+    madmax_exec = "chia_plot"
     if ksize > 32:
-        madmax_exec += "_k34"  # Use the one_plot_k34 executable for k-sizes > 32
+        madmax_exec += "_k34"  # Use the chia_plot_k34 executable for k-sizes > 32
     if sys.platform in ["win32", "cygwin"]:
         madmax_exec += ".exe"
     return venv_bin_path / madmax_exec
@@ -46,9 +43,9 @@ def get_madmax_exec_venv_path(ksize: int = 32) -> Optional[Path]:
 
 def get_madmax_exec_src_path(plotters_root_path: Path, ksize: int = 32) -> Path:
     madmax_src_dir = get_madmax_src_path(plotters_root_path) / "build"
-    madmax_exec = "one_plot"
+    madmax_exec = "chia_plot"
     if ksize > 32:
-        madmax_exec += "_k34"  # Use the one_plot_k34 executable for k-sizes > 32
+        madmax_exec += "_k34"  # Use the chia_plot_k34 executable for k-sizes > 32
     if sys.platform in ["win32", "cygwin"]:
         madmax_exec += ".exe"
     return madmax_src_dir / madmax_exec
@@ -56,9 +53,9 @@ def get_madmax_exec_src_path(plotters_root_path: Path, ksize: int = 32) -> Path:
 
 def get_madmax_exec_package_path(ksize: int = 32) -> Path:
     madmax_dir: Path = get_madmax_package_path()
-    madmax_exec: str = "one_plot"
+    madmax_exec: str = "chia_plot"
     if ksize > 32:
-        madmax_exec += "_k34"  # Use the one_plot_k34 executable for k-sizes > 32
+        madmax_exec += "_k34"  # Use the chia_plot_k34 executable for k-sizes > 32
     if sys.platform in ["win32", "cygwin"]:
         madmax_exec += ".exe"
     return madmax_dir / madmax_exec
@@ -160,7 +157,9 @@ def plot_madmax(args, one_root_path: Path, plotters_root_path: Path):
 
         # madMAx has a ulimit -n requirement > 296:
         # "Cannot open at least 296 files, please raise maximum open file limit in OS."
-        resource.setrlimit(resource.RLIMIT_NOFILE, (512, 512))
+        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        # Set soft limit to max (hard limit)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (hard_limit, hard_limit))
     else:
         reset_loop_policy_for_windows()
 

@@ -1,14 +1,16 @@
-from typing import Iterator, List, Tuple, Optional
+from __future__ import annotations
+
+from typing import Iterator, List, Optional, Tuple
 
 from one.types.blockchain_format.coin import Coin
 from one.types.blockchain_format.program import Program
 from one.types.blockchain_format.sized_bytes import bytes32
-from one.types.condition_opcodes import ConditionOpcode
 from one.types.coin_spend import CoinSpend
-from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
-from one.wallet.lineage_proof import LineageProof
-from one.util.ints import uint64
+from one.types.condition_opcodes import ConditionOpcode
 from one.util.hash import std_hash
+from one.util.ints import uint64
+from one.wallet.lineage_proof import LineageProof
+from one.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
 
 SINGLETON_MOD = load_clvm_maybe_recompile("singleton_top_layer.clvm")
 SINGLETON_MOD_HASH = SINGLETON_MOD.get_tree_hash()

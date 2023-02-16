@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import ipaddress
 import logging
@@ -8,12 +10,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import aiosqlite
-from dnslib import A, AAAA, SOA, NS, MX, CNAME, RR, DNSRecord, QTYPE, DNSHeader
+from dnslib import AAAA, CNAME, MX, NS, QTYPE, RR, SOA, A, DNSHeader, DNSRecord
 
 from one.util.one_logging import initialize_logging
-from one.util.path import path_from_root
 from one.util.config import load_config
 from one.util.default_root import DEFAULT_ROOT_PATH
+from one.util.path import path_from_root
 
 SERVICE_NAME = "seeder"
 log = logging.getLogger(__name__)

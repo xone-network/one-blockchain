@@ -1,21 +1,23 @@
+from __future__ import annotations
+
 import logging
 import sys
 from multiprocessing import freeze_support
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from one.full_node.full_node import FullNode
 from one.server.outbound_message import NodeType
 from one.server.start_service import Service, async_run
+from one.simulator.block_tools import BlockTools, test_constants
+from one.simulator.full_node_simulator import FullNodeSimulator
 from one.simulator.simulator_full_node_rpc_api import SimulatorFullNodeRpcApi
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.util.bech32m import decode_puzzle_hash
 from one.util.one_logging import initialize_logging
-from one.util.config import load_config_cli, override_config, load_config
+from one.util.config import load_config, load_config_cli, override_config
 from one.util.default_root import DEFAULT_ROOT_PATH
-from one.simulator.block_tools import BlockTools, test_constants
 from one.util.ints import uint16
-from one.simulator.full_node_simulator import FullNodeSimulator
 
 # See: https://bugs.python.org/issue29288
 "".encode("idna")
@@ -82,7 +84,7 @@ async def async_main(test_mode: bool = False, automated_testing: bool = False, r
             "full_node.selected_network": "testnet0",
             "full_node.database_path": service_config["simulator_database_path"],
             "full_node.peers_file_path": service_config["simulator_peers_file_path"],
-            "full_node.introducer_peer": {"host": "127.0.0.1", "port": 58555},
+            "full_node.introducer_peer": {"host": "127.0.0.1", "port": 11207},
         }
     overrides["simulator.use_current_time"] = True
 

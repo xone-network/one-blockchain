@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import logging
 import time
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from blspy import G1Element, G2Element, AugSchemeMPL
+from blspy import AugSchemeMPL, G1Element, G2Element
 
 from one.consensus.cost_calculator import NPCResult
 from one.full_node.bundle_tools import simple_solution_generator
@@ -47,6 +48,10 @@ from one.wallet.wallet_info import WalletInfo
 
 if TYPE_CHECKING:
     from one.server.ws_connection import WSOneConnection
+
+
+# https://github.com/Chia-Network/chips/blob/80e4611fe52b174bf1a0382b9dff73805b18b8c6/CHIPs/chip-0002.md#signmessage
+CHIP_0002_SIGN_MESSAGE_PREFIX = "One Signed Message"
 
 
 class Wallet:
@@ -267,6 +272,7 @@ class Wallet:
         exclude: Optional[List[Coin]] = None,
         min_coin_amount: Optional[uint64] = None,
         max_coin_amount: Optional[uint64] = None,
+        excluded_coin_amounts: Optional[List[uint64]] = None,
     ) -> Set[Coin]:
         """
         Returns a set of coins that can be used for generating a new transaction.
@@ -293,6 +299,7 @@ class Wallet:
             uint128(amount),
             exclude,
             min_coin_amount,
+            excluded_coin_amounts,
         )
         assert sum(c.amount for c in coins) >= amount
         return coins
@@ -311,6 +318,8 @@ class Wallet:
         memos: Optional[List[bytes]] = None,
         negative_change_allowed: bool = False,
         min_coin_amount: Optional[uint64] = None,
+        max_coin_amount: Optional[uint64] = None,
+        exclude_coin_amounts: Optional[List[uint64]] = None,
         exclude_coins: Optional[Set[Coin]] = None,
     ) -> List[CoinSpend]:
         """
@@ -327,17 +336,26 @@ class Wallet:
                 primaries_amount += prim["amount"]
             total_amount = amount + fee + primaries_amount
 
+        total_balance = await self.get_spendable_balance()
         if not ignore_max_send_amount:
             max_send = await self.get_max_send_amount()
             if total_amount > max_send:
-                raise ValueError(f"Can't send more than {max_send} in a single transaction")
+                raise ValueError(f"Can't send more than {max_send} mojos in a single transaction")
             self.log.debug("Got back max send amount: %s", max_send)
         if coins is None:
+            if total_amount > total_balance:
+                raise ValueError(
+                    f"Can't spend more than wallet balance: {total_balance} mojos, tried to spend: {total_amount} mojos"
+                )
             exclude_coins_list: Optional[List[Coin]] = None
             if exclude_coins is not None:
                 exclude_coins_list = list(exclude_coins)
             coins = await self.select_coins(
-                uint64(total_amount), min_coin_amount=min_coin_amount, exclude=exclude_coins_list
+                uint64(total_amount),
+                min_coin_amount=min_coin_amount,
+                max_coin_amount=max_coin_amount,
+                excluded_coin_amounts=exclude_coin_amounts,
+                exclude=exclude_coins_list,
             )
         elif exclude_coins is not None:
             raise ValueError("Can't exclude coins when also specifically including coins")
@@ -433,10 +451,12 @@ class Wallet:
         )
 
     async def sign_message(self, message: str, puzzle_hash: bytes32) -> Tuple[G1Element, G2Element]:
+        # CHIP-0002 message signing as documented at:
+        # https://github.com/Chia-Network/chips/blob/80e4611fe52b174bf1a0382b9dff73805b18b8c6/CHIPs/chip-0002.md#signmessage
         pubkey, private = await self.wallet_state_manager.get_keys(puzzle_hash)
         synthetic_secret_key = calculate_synthetic_secret_key(private, DEFAULT_HIDDEN_PUZZLE_HASH)
         synthetic_pk = synthetic_secret_key.get_g1()
-        puzzle: Program = Program.to(("One Signed Message", message))
+        puzzle: Program = Program.to((CHIP_0002_SIGN_MESSAGE_PREFIX, message))
         return synthetic_pk, AugSchemeMPL.sign(synthetic_secret_key, puzzle.get_tree_hash())
 
     async def generate_signed_transaction(
@@ -453,6 +473,8 @@ class Wallet:
         memos: Optional[List[bytes]] = None,
         negative_change_allowed: bool = False,
         min_coin_amount: Optional[uint64] = None,
+        max_coin_amount: Optional[uint64] = None,
+        exclude_coin_amounts: Optional[List[uint64]] = None,
         exclude_coins: Optional[Set[Coin]] = None,
     ) -> TransactionRecord:
         """
@@ -479,6 +501,8 @@ class Wallet:
             memos,
             negative_change_allowed,
             min_coin_amount=min_coin_amount,
+            max_coin_amount=max_coin_amount,
+            exclude_coin_amounts=exclude_coin_amounts,
             exclude_coins=exclude_coins,
         )
         assert len(transaction) > 0
@@ -567,20 +591,27 @@ class Wallet:
         return spend_bundle
 
     async def get_coins_to_offer(
-        self, asset_id: Optional[bytes32], amount: uint64, min_coin_amount: Optional[uint64] = None
+        self,
+        asset_id: Optional[bytes32],
+        amount: uint64,
+        min_coin_amount: Optional[uint64] = None,
+        max_coin_amount: Optional[uint64] = None,
     ) -> Set[Coin]:
         if asset_id is not None:
             raise ValueError(f"The standard wallet cannot offer coins with asset id {asset_id}")
         balance = await self.get_confirmed_balance()
         if balance < amount:
             raise Exception(f"insufficient funds in wallet {self.id()}")
-        return await self.select_coins(amount, min_coin_amount=min_coin_amount)
+        return await self.select_coins(amount, min_coin_amount=min_coin_amount, max_coin_amount=max_coin_amount)
 
     # WSOneConnection is only imported for type checking
     async def coin_added(
         self, coin: Coin, height: uint32, peer: WSOneConnection
     ) -> None:  # pylint: disable=used-before-assignment
         pass
+
+    def get_name(self) -> str:
+        return "Standard Wallet"
 
 
 if TYPE_CHECKING:

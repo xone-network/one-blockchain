@@ -1,4 +1,6 @@
-from typing import List, Tuple, Optional
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
 
 from one.types.blockchain_format.sized_bytes import bytes32
 from one.util.db_wrapper import DBWrapper2

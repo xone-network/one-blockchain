@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Tuple
 
 from clvm.casts import int_from_bytes
@@ -7,9 +9,9 @@ from one.types.blockchain_format.program import Program, SerializedProgram
 from one.types.blockchain_format.sized_bytes import bytes32, bytes48
 from one.types.condition_opcodes import ConditionOpcode
 from one.types.condition_with_args import ConditionWithArgs
+from one.types.spend_bundle_conditions import SpendBundleConditions
 from one.util.errors import ConsensusError, Err
 from one.util.ints import uint64
-from one.types.spend_bundle_conditions import SpendBundleConditions
 
 # TODO: review each `assert` and consider replacing with explicit checks
 #       since asserts can be stripped with python `-OO` flag
@@ -19,7 +21,7 @@ def parse_sexp_to_condition(
     sexp: Program,
 ) -> Tuple[Optional[Err], Optional[ConditionWithArgs]]:
     """
-    Takes a OneLisp sexp and returns a ConditionWithArgs.
+    Takes a ChiaLisp sexp and returns a ConditionWithArgs.
     If it fails, returns an Error
     """
     as_atoms = sexp.as_atom_list()
@@ -34,7 +36,7 @@ def parse_sexp_to_conditions(
     sexp: Program,
 ) -> Tuple[Optional[Err], Optional[List[ConditionWithArgs]]]:
     """
-    Takes a OneLisp sexp (list) and returns the list of ConditionWithArgss
+    Takes a ChiaLisp sexp (list) and returns the list of ConditionWithArgss
     If it fails, returns as Error
     """
     results: List[ConditionWithArgs] = []
@@ -64,12 +66,16 @@ def conditions_by_opcode(
     return d
 
 
-def pkm_pairs(conditions: SpendBundleConditions, additional_data: bytes) -> Tuple[List[bytes48], List[bytes]]:
+def pkm_pairs(
+    conditions: SpendBundleConditions, additional_data: bytes, *, soft_fork: bool
+) -> Tuple[List[bytes48], List[bytes]]:
     ret: Tuple[List[bytes48], List[bytes]] = ([], [])
 
     for pk, msg in conditions.agg_sig_unsafe:
         ret[0].append(bytes48(pk))
         ret[1].append(msg)
+        if soft_fork and msg.endswith(additional_data):
+            raise ConsensusError(Err.INVALID_CONDITION)
 
     for spend in conditions.spends:
         for pk, msg in spend.agg_sig_me:
@@ -88,6 +94,8 @@ def pkm_pairs_for_conditions_dict(
         assert len(cwa.vars) == 2
         assert len(cwa.vars[0]) == 48 and len(cwa.vars[1]) <= 1024
         assert cwa.vars[0] is not None and cwa.vars[1] is not None
+        if cwa.vars[1].endswith(additional_data):
+            raise ConsensusError(Err.INVALID_CONDITION)
         ret.append((bytes48(cwa.vars[0]), cwa.vars[1]))
 
     for cwa in conditions_dict.get(ConditionOpcode.AGG_SIG_ME, []):

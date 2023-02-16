@@ -29,7 +29,7 @@ rm -rf node_modules
 
 # Other than `one-blockchain-gui/package/gui`, all other packages are no longer necessary after build.
 # Since these unused packages make cache unnecessarily fat, here unused packages are removed.
-echo "Remove unused @one packages to make cache slim"
+echo "Remove unused @xone-network packages to make cache slim"
 ls -l packages
 rm -rf packages/api
 rm -rf packages/api-react
@@ -44,5 +44,5 @@ rm -rf electron/dist # ~186MB
 rm -rf "@mui" # ~71MB
 rm -rf typescript # ~63MB
 
-# Remove `packages/gui/node_modules/@one` because it causes an error on later `electron-packager` command
-rm -rf "@one"
+# Remove `packages/gui/node_modules/@xone-network` because it causes an error on later `electron-packager` command
+rm -rf "@xone-network"

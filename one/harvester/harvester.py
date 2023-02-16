@@ -8,7 +8,6 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import one.server.ws_connection as ws  # lgtm [py/import-and-import-from]
 from one.consensus.constants import ConsensusConstants
 from one.plot_sync.sender import Sender
 from one.plotting.manager import PlotManager
@@ -24,6 +23,7 @@ from one.plotting.util import (
 from one.rpc.rpc_server import default_get_connections
 from one.server.outbound_message import NodeType
 from one.server.server import OneServer
+from one.server.ws_connection import WSOneConnection
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class Harvester:
     def get_connections(self, request_node_type: Optional[NodeType]) -> List[Dict[str, Any]]:
         return default_get_connections(server=self.server, request_node_type=request_node_type)
 
-    async def on_connect(self, connection: ws.WSOneConnection):
+    async def on_connect(self, connection: WSOneConnection):
         pass
 
     def _set_state_changed_callback(self, callback: Callable):
@@ -123,7 +123,7 @@ class Harvester:
         if event == PlotRefreshEvents.done:
             self.plot_sync_sender.sync_done(update_result.removed, update_result.duration)
 
-    def on_disconnect(self, connection: ws.WSOneConnection):
+    def on_disconnect(self, connection: WSOneConnection):
         self.log.info(f"peer disconnected {connection.get_peer_logging()}")
         self.state_changed("close_connection")
         self.plot_sync_sender.stop()
